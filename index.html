@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operative Note Generator</title>
+<style>
+  :root{
+    --blue:#1a5fb4; --blue-dark:#134a8e; --bg:#f2f5f9; --card:#ffffff;
+    --border:#d5dde8; --text:#1c2733; --muted:#5b6b7d; --accent:#e8f0fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:"Sarabun","TH Sarabun New","Segoe UI",Tahoma,sans-serif;font-size:15px;}
+  header{background:var(--blue);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  header h1{font-size:20px;margin:0;font-weight:700;}
+  header .sub{font-size:13px;opacity:.85}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px;}
+  .card h2{font-size:15px;margin:0 0 12px;color:var(--blue-dark);border-bottom:2px solid var(--accent);padding-bottom:6px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 14px;}
+  .full{grid-column:1/-1}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+    width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font:inherit;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:2px solid #9dc0ee;border-color:var(--blue);}
+  textarea{resize:vertical;min-height:56px}
+  .chks{display:flex;flex-wrap:wrap;gap:6px 16px;padding:4px 0;}
+  .chks label{display:flex;align-items:center;gap:5px;font-weight:400;color:var(--text);font-size:14px;margin:0;cursor:pointer;}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
+  button{font:inherit;font-weight:700;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;}
+  .primary{background:var(--blue);color:#fff}
+  .primary:hover{background:var(--blue-dark)}
+  .ghost{background:#fff;color:var(--blue);border:1.5px solid var(--blue)}
+  .danger{background:#fff;color:#b3261e;border:1.5px solid #b3261e}
+  #previewPane{position:sticky;top:12px;}
+  #preview{background:#fff;border:1px solid var(--border);border-radius:10px;padding:28px 32px;
+    min-height:400px;max-height:82vh;overflow:auto;font-family:"Sarabun","TH Sarabun New",serif;font-size:14.5px;line-height:1.45;}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+  /* preview / doc shared look */
+  #preview h1{font-size:20px;text-align:center;margin:0 0 10px}
+  #preview table{border-collapse:collapse;width:100%;margin-bottom:10px}
+  #preview td{border:1px solid #444;padding:5px 8px;vertical-align:top;font-size:14px}
+  .badge{background:#fff;color:var(--blue);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>Operative Note Generator</h1>
+  <span class="sub">กรอกข้อมูล → Export เป็นไฟล์ Word (.doc) — เลือก Operation แล้วระบบใส่ขั้นตอนผ่าตัดมาตรฐานให้อัตโนมัติ</span>
+  <span class="badge" id="draftBadge" style="display:none">บันทึกแบบร่างอัตโนมัติแล้ว</span>
+</header>
+
+<div class="wrap">
+<div id="formPane">
+
+  <div class="card">
+    <h2>ข้อมูลผู้ป่วย</h2>
+    <div class="grid">
+      <div class="full"><label>ชื่อ-นามสกุลผู้ป่วย (Patient Name)</label><input type="text" id="PATIENT_NAME"></div>
+      <div><label>HN</label><input type="text" id="HN"></div>
+      <div><label>AN</label><input type="text" id="AN"></div>
+      <div><label>อายุ (Age)</label><input type="text" id="AGE"></div>
+      <div><label>Ward</label><input type="text" id="WARD"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>การผ่าตัด</h2>
+    <div class="grid3">
+      <div><label>วันที่ผ่าตัด (Date)</label><input type="date" id="DATE"></div>
+      <div><label>เวลาเริ่ม (Time start)</label><input type="time" id="TIME_START"></div>
+      <div><label>เวลาเสร็จ (Time end)</label><input type="time" id="TIME_END"></div>
+    </div>
+    <div class="grid" style="margin-top:10px">
+      <div class="full">
+        <label>Operation Type</label>
+        <select id="OP_TYPE"></select>
+      </div>
+      <div class="full" id="opOtherWrap" style="display:none">
+        <label>ระบุชื่อ Operation (กรณี Other)</label><input type="text" id="OP_OTHER" placeholder="เช่น Splenectomy">
+      </div>
+      <div class="full"><label>Pre-Operative Diagnosis</label><input type="text" id="PRE_OP_DX"></div>
+      <div class="full"><label>Post-Operative Diagnosis</label><input type="text" id="POST_OP_DX"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ทีมผ่าตัด</h2>
+    <div class="grid">
+      <div class="full"><label>Surgeon</label>
+        <select id="SURGEON">
+          <option value=""></option>
+          <option>น.พ. ธีรินทร์ โชติเรืองประเสริฐ</option>
+          <option>น.พ. วิชญะ วงษ์พิทักษ์</option>
+          <option>น.พ. จิระ เนินคีรี</option>
+          <option>พ.ญ. พิชชา ลิขิตผลจรูญ</option>
+          <option>พ.ญ. ณัฐพร มณีไพโรจน์</option>
+          <option>น.พ. ศวิษฐ์ ทนงกิจ</option>
+          <option>น.พ. พงษ์พิริยะ ฟูประเสริฐ</option>
+          <option>น.พ. พรหมพร รัตนชินกร</option>
+          <option>น.พ. ก้องเกียรติ จุฬพุฒิพงษ์</option>
+        </select>
+      </div>
+      <div><label>First Assistant</label><input type="text" id="FIRST_ASSISTANT"></div>
+      <div><label>Second Assistant</label><input type="text" id="SECOND_ASSISTANT"></div>
+      <div><label>Scrub Nurse</label><input type="text" id="SCRUB_NURSE"></div>
+      <div><label>Circulate Nurse</label><input type="text" id="CIRCULATE_NURSE"></div>
+      <div><label>Anesthesiologist (วิสัญญีแพทย์)</label><input type="text" id="ANESTHESIOLOGIST"></div>
+      <div><label>Anesthetist (วิสัญญีพยาบาล)</label><input type="text" id="ANESTHETIST"></div>
+      <div class="full"><label>Anesthesia</label><input type="text" id="ANESTHESIA" placeholder="เช่น GA with ETT"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Wound Classification / Pathology</h2>
+    <div class="grid">
+      <div>
+        <label>Wound Classification</label>
+        <div class="chks" id="woundGrp">
+          <label><input type="radio" name="WOUND" value="clean"> Clean</label>
+          <label><input type="radio" name="WOUND" value="clean_contam"> Clean Contaminated</label>
+          <label><input type="radio" name="WOUND" value="contam"> Contaminated</label>
+          <label><input type="radio" name="WOUND" value="dirty"> Dirty/Infected</label>
+        </div>
+      </div>
+      <div>
+        <label>Pathology (ส่งชิ้นเนื้อ)</label>
+        <div class="chks">
+          <label><input type="radio" name="PATH" value="no"> No</label>
+          <label><input type="radio" name="PATH" value="yes"> Yes</label>
+        </div>
+        <input type="text" id="PATH_DETAIL" placeholder="ระบุชิ้นเนื้อที่ส่ง (ถ้ามี)">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>รายละเอียดการผ่าตัด</h2>
+    <div class="grid">
+      <div><label>Position</label><input type="text" id="POSITION" placeholder="เช่น Supine"></div>
+      <div><label>Incision</label><input type="text" id="APPROACH" placeholder="เช่น Midline incision"></div>
+      <div class="full"><label>Findings</label><textarea id="FINDING"></textarea></div>
+      <div class="full">
+        <label>Anesthesia Technique Used</label>
+        <div class="chks">
+          <label><input type="checkbox" id="CB_LA"> LA</label>
+          <label><input type="checkbox" id="CB_TIVA"> TIVA</label>
+          <label><input type="checkbox" id="CB_SB"> SB</label>
+          <label><input type="checkbox" id="CB_RB"> RB</label>
+          <label><input type="checkbox" id="CB_GA"> GA</label>
+          <label><input type="checkbox" id="CB_MAC"> MAC</label>
+          <label><input type="checkbox" id="CB_OTHER_ANES"> Other:</label>
+          <input type="text" id="OTHER_ANES_DETAIL" style="width:180px" placeholder="ระบุ">
+        </div>
+      </div>
+      <div class="full"><label>Procedure (เลือก Operation แล้วขั้นตอนมาตรฐานจะถูกใส่ให้อัตโนมัติ — แก้ไขได้)</label><textarea id="OP_DETAIL" rows="7"></textarea>
+        <div class="hint">คำว่า {Incision} {Findings} {Position} ในข้อความ จะถูกแทนด้วยข้อมูลจากช่องนั้นๆ ตอน export</div>
+      </div>
+      <div class="full"><label>Additional Notes</label><textarea id="ADDITIONAL_NOTES"></textarea></div>
+      <div class="full"><label>Drain</label>
+        <div class="chks">
+          <label><input type="radio" name="DRAIN" value="yes"> Yes</label>
+          <label><input type="radio" name="DRAIN" value="no"> No</label>
+        </div>
+        <input type="text" id="DRAIN_DETAIL" placeholder="ระบุรายละเอียด drain (กรณี Yes)" style="display:none">
+      </div>
+      <div><label>EBL (ml)</label><input type="number" id="EBL" min="0"></div>
+      <div><label>Complication</label><input type="text" id="COMPLICATION"></div>
+      <div class="full"><label>Swab Count</label>
+        <div class="chks">
+          <label><input type="radio" name="SWAB" value="corrected"> Corrected</label>
+          <label><input type="radio" name="SWAB" value="incorrected"> Incorrected</label>
+          <label><input type="radio" name="SWAB" value="na"> N/A</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="primary" onclick="printDoc()">🖨 Export PDF / พิมพ์</button>
+    <button class="ghost" onclick="exportDoc()">⬇ Export .doc</button>
+    <button class="danger" onclick="clearForm()">ล้างฟอร์ม</button>
+  </div>
+  <div class="hint">Export PDF: กดปุ่มแล้วในหน้าต่างพิมพ์เลือกเครื่องพิมพ์เป็น <b>"Save as PDF / บันทึกเป็น PDF"</b> — ได้ไฟล์ตามแบบฟอร์ม IPD-OR-019 • ไฟล์ .doc เปิดแก้ต่อใน Word ได้ • ข้อมูลบันทึกแบบร่างในเครื่องอัตโนมัติ</div>
+
+</div>
+
+<div id="previewPane">
+  <div class="card" style="margin-bottom:10px"><h2 style="margin:0;border:0;padding:0">Preview (อัปเดตอัตโนมัติ)</h2></div>
+  <div id="preview"></div>
+</div>
+</div>
+
+<script>
+"use strict";
+
+/* ===== ขั้นตอนผ่าตัดมาตรฐานของแต่ละ operation (จาก templates เดิมทั้ง 19)
+   {A} = Incision/Approach, {F} = Findings, {P} = Position ===== */
+const OPS = {
+"Appendectomy":{slug:"appendectomy",steps:[
+ "The abdomen was entered via {A}, with dissection deepened through subcutaneous tissue, fascia, and muscle layers to enter the peritoneal cavity.",
+ "The appendix was identified.",
+ " Findings were:",
+ "{F}.",
+ "The mesoappendix was clamped, divided, and ligated.", 
+ "Appendiceal stump was double ligated and cautertized.",
+ "Bleeding was controlled.",
+ "Sheath was closed with absorbable suture. Subcutaneous tissue and skin were closed in layers."]},
+"Cholecystectomy":{slug:"cholecystectomy",steps:[
+ "A {A} approach was used to enter the abdomen.",
+ "The gallbladder was identified: {F}.",
+ "Fundus first dissection was performed to expose Calot's triangle.",
+ "Calot's triangle was dissected; the cystic artery and cystic duct were identified, clipped/ligated, and divided.",
+ "The gallbladder was dissected off the liver bed and removed; hemostasis of the liver bed was achieved and the field was irrigated.",
+ "Sheath was closed with absorbable suture. Subcutaneous tissue and skin were closed in layers."]},
+"Right hemicolectomy":{slug:"right-hemicolectomy",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The right colon was mobilized along the white line of Toldt, with careful identification and preservation of the ureter and duodenum.",
+ "The ileocolic, right colic (if present), and right branch of the middle colic vessels were ligated and divided.",
+ "The bowel was divided proximally (terminal ileum) and distally (transverse colon), and an ileocolic anastomosis was performed.",
+ "The mesenteric defect was closed and the abdomen was irrigated and closed in layers."]},
+"Left hemicolectomy":{slug:"left-hemicolectomy",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The left colon was mobilized along the white line of Toldt with identification and preservation of the left ureter and gonadal vessels.",
+ "The left colic vessels and relevant sigmoid branches were ligated and divided.",
+ "The bowel was divided proximally (descending/transverse colon) and distally (sigmoid colon), and a colocolic anastomosis was performed.",
+ "The mesenteric defect was closed and the abdomen was irrigated and closed in layers."]},
+"Sigmoidectomy":{slug:"sigmoidectomy",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The sigmoid colon was mobilized, with identification and preservation of the left ureter and gonadal vessels.",
+ "The sigmoid mesentery and vessels were ligated and divided.",
+ "The bowel was divided proximally and distally, and a colorectal/colocolic anastomosis was performed; hemostasis was confirmed and the abdomen was closed in layers."]},
+"Anterior resection":{slug:"anterior-resection",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The sigmoid and rectum were mobilized with mesorectal excision as indicated, preserving the pelvic autonomic nerves.",
+ "The inferior mesenteric vessels were ligated and divided.",
+ "The rectum was divided distal to the lesion and the specimen was resected; a colorectal anastomosis was performed (stapled).",
+ "Anastomotic integrity was confirmed (air-leak test) and the pelvis was drained as indicated."]},
+"Low anterior resection":{slug:"low-anterior-resection",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "Total mesorectal excision was performed with mobilization of the rectum down to the pelvic floor, preserving the pelvic autonomic nerves.",
+ "The inferior mesenteric vessels were ligated and divided.",
+ "The rectum was divided distal to the lesion with an adequate margin and the specimen was resected; a low colorectal/coloanal anastomosis was performed, with a diverting loop ileostomy as indicated.",
+ "Anastomotic integrity was confirmed (air-leak test) and the pelvis was drained."]},
+"Abdominoperineal resection (APR)":{slug:"abdominoperineal-resection",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "Total mesorectal excision was performed with mobilization of the rectum and anal canal.",
+ "The inferior mesenteric vessels were ligated and divided; a permanent end colostomy was matured.",
+ "The perineal phase was performed with excision of the anus and distal rectum en bloc with the specimen.",
+ "The perineal wound was closed in layers and the pelvis was drained."]},
+"Distal gastrectomy":{slug:"distal-gastrectomy",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The stomach was mobilized along the greater and lesser curvatures with ligation of the relevant vessels.",
+ "The duodenum was divided distal to the pylorus and the stomach was divided proximal to the lesion with an adequate margin.",
+ "Reconstruction was performed (Billroth I/II or Roux-en-Y gastrojejunostomy) as indicated.",
+ "Anastomotic integrity was confirmed and the abdomen was drained and closed in layers."]},
+"Exploratory laparotomy with simple suture & omental graft":{slug:"ex-lap-simple-suture-omental-graft",steps:[
+ "The abdomen was entered via {A} and explored: {F}.",
+ "The perforation/injury site was identified and controlled.",
+ "The defect was closed primarily with simple interrupted sutures in a transverse fashion to avoid luminal narrowing.",
+ "An omental patch/graft was mobilized and secured over the repair.",
+ "The peritoneal cavity was irrigated copiously with NSS, hemostasis was confirmed, and a drain was placed as indicated."]},
+"Herniorrhaphy with mesh":{slug:"herniorrhaphy-mesh",steps:[
+ "The hernia site was approached via {A}.",
+ "The hernia sac was identified and dissected free from surrounding structures: {F}.",
+ "The sac was reduced/ligated and excised as indicated.",
+ "The defect was repaired using a synthetic mesh, fixed in place with sutures/tacks in a tension-free fashion; hemostasis was confirmed and layers were closed."]},
+"Mastectomy with ALND":{slug:"mastectomy-alnd",steps:[
+ "The patient was placed in {P} position with the arm abducted.",
+ "An elliptical incision was made encompassing the nipple-areolar complex and any prior biopsy site: {F}.",
+ "Skin flaps were raised in the plane of the breast tissue, and the breast was excised off the pectoralis fascia.",
+ "The axilla was opened and level I/II lymph nodes were dissected, with preservation of the long thoracic and thoracodorsal nerves.",
+ "Hemostasis was achieved, a drain was placed, and the wound was closed in layers."]},
+"Excision breast mass":{slug:"excision-breast-mass",steps:[
+ "The breast mass was localized by palpation/imaging: {F}.",
+ "An incision was made over/near the mass and the mass was excised with a margin of surrounding normal tissue.",
+ "The specimen was oriented and sent for pathology.",
+ "Hemostasis was achieved and the defect was closed in layers."]},
+"Excision lipoma":{slug:"excision-lipoma",steps:[
+ "The lipoma was localized: {F}.",
+ "An incision was made over the lesion and dissection was carried down to the capsule.",
+ "The lipoma was enucleated/excised in its entirety along with its capsule.",
+ "Hemostasis was achieved and the cavity was closed in layers."]},
+"Excisional debridement":{slug:"excisional-debridement",steps:[
+ "The wound was examined: {F}.",
+ "Non-viable/necrotic tissue was sharply excised down to bleeding, viable tissue margins.",
+ "The wound was irrigated copiously with NSS.",
+ "Hemostasis was achieved and dressing was applied."]},
+"Fistulotomy":{slug:"fistulotomy",steps:[
+ "The external and internal openings of the fistula tract were identified: {F}.",
+ "A probe was passed through the tract to confirm its course.",
+ "The tract was laid open along the probe, and the wound edges were marsupialized.",
+ "Hemostasis was achieved and the wound was left open/packed."]},
+"Fistulectomy":{slug:"fistulectomy",steps:[
+ "The external and internal openings of the fistula tract were identified: {F}.",
+ "The entire fistula tract was excised after probing its course.",
+ "The internal opening was closed and the wound was left open or approximated as indicated.",
+ "Hemostasis was achieved."]},
+"Hemorrhoidectomy":{slug:"hemorrhoidectomy",steps:[
+ "The patient was placed in {P} position.",
+ "Hemorrhoidal columns were identified and examined: {F}.",
+ "Each hemorrhoidal pile was excised with ligation of the vascular pedicle.",
+ "Hemostasis was achieved and the anal canal was inspected."]},
+"Perianal abscess drainage":{slug:"perianal-abscess-drainage",steps:[
+ "The perianal region was examined and the abscess was localized: {F}.",
+ "A cruciate/radial incision was made over the point of maximum fluctuance.",
+ "Pus was evacuated and the cavity was explored digitally to break loculations; a sample was sent for culture as indicated.",
+ "The cavity was irrigated with NSS; a drain/wick was placed as needed."]}
+};
+const OTHER_LABEL = "Other (ระบุเอง — ใช้แบบฟอร์มทั่วไป)";
+
+/* ===== helpers ===== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+const CHK = "☑", UNCHK = "☐"; // ☑ ☐
+const cb = on => on ? CHK : UNCHK;
+
+function fmtDate(iso){
+  if(!iso) return "";
+  const [y,m,d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+const TEXT_IDS = ["PATIENT_NAME","HN","AN","AGE","WARD","DATE","TIME_START","TIME_END","OP_OTHER",
+ "PRE_OP_DX","POST_OP_DX","SURGEON","FIRST_ASSISTANT","SECOND_ASSISTANT","SCRUB_NURSE","CIRCULATE_NURSE",
+ "ANESTHESIOLOGIST","ANESTHETIST","ANESTHESIA","PATH_DETAIL","POSITION","APPROACH","FINDING",
+ "OTHER_ANES_DETAIL","EBL","COMPLICATION","DRAIN_DETAIL","OP_DETAIL","ADDITIONAL_NOTES","OP_TYPE"];
+const CB_IDS = ["CB_LA","CB_TIVA","CB_SB","CB_RB","CB_GA","CB_MAC","CB_OTHER_ANES"];
+
+function collect(){
+  const d = {};
+  TEXT_IDS.forEach(id => d[id] = $(id).value.trim());
+  CB_IDS.forEach(id => d[id] = $(id).checked);
+  d.WOUND = (document.querySelector('input[name=WOUND]:checked')||{}).value || "";
+  d.PATH  = (document.querySelector('input[name=PATH]:checked')||{}).value || "";
+  d.DRAIN = (document.querySelector('input[name=DRAIN]:checked')||{}).value || "";
+  d.SWAB  = (document.querySelector('input[name=SWAB]:checked')||{}).value || "";
+  d.isOther = d.OP_TYPE === OTHER_LABEL || d.OP_TYPE === "";
+  d.OPERATION = d.isOther ? d.OP_OTHER : d.OP_TYPE;
+  return d;
+}
+
+/* ===== สร้างเนื้อหาเอกสาร (โครงเดียวกับ Google Docs templates เดิม) ===== */
+function buildBody(d){
+  const tech = [];
+  if(d.CB_LA) tech.push("LA");
+  if(d.CB_TIVA) tech.push("TIVA");
+  if(d.CB_SB) tech.push("SB");
+  if(d.CB_RB) tech.push("RB");
+  if(d.CB_GA) tech.push("GA");
+  if(d.CB_MAC) tech.push("MAC");
+  if(d.CB_OTHER_ANES) tech.push(d.OTHER_ANES_DETAIL || "Other");
+  const anesLine = `- under ${tech.length ? esc(tech.join(", ")) : "__________"}`;
+
+  const procHtml = esc(d.OP_DETAIL)
+    .replace(/\{Incision\}/g, esc(d.APPROACH)||"__________")
+    .replace(/\{Findings\}/g, esc(d.FINDING)||"__________")
+    .replace(/\{Position\}/g, esc(d.POSITION)||"__________");
+
+  const drainTxt = d.DRAIN==="yes" ? ("Yes" + (d.DRAIN_DETAIL ? " — "+esc(d.DRAIN_DETAIL) : ""))
+                 : d.DRAIN==="no" ? "No" : "";
+  const swabTxt = {corrected:"Corrected", incorrected:"Incorrected", na:"N/A"}[d.SWAB] || "";
+
+  const woundRow = (v,label,key)=> `${cb(d.WOUND===key)} ${label}`;
+  const dot = (v,n)=> v ? esc(v) : "…".repeat(n);
+
+  return `
+<p style="text-align:center;font-size:16pt;margin:0"><b>โรงพยาบาลเฉลิมพระเกียรติสมเด็จพระเทพรัตนราชสุดา ฯ สยามบรมราชกุมารี ระยอง</b></p>
+<p style="text-align:right;margin:2pt 0 0">IPD-OR-019 แก้ไขครั้งที่ 1 : เริ่มใช้วันที่ 12 กันยายน 2565</p>
+<p style="text-align:center;font-size:16pt;margin:0"><b>แบบบันทึกการผ่าตัด</b></p>
+<p style="text-align:center;font-size:16pt;margin:0 0 4pt"><b>Operative Note</b></p>
+<table style="border-collapse:collapse;width:100%" border="1" cellspacing="0" cellpadding="5">
+ <tr>
+  <td style="width:62%;vertical-align:top">
+    Pre-Operative Diagnosis : ${dot(d.PRE_OP_DX,45)}<br>
+    Post-Operative Diagnosis : ${dot(d.POST_OP_DX,44)}<br>
+    Operation : ${dot(d.OPERATION,55)}
+  </td>
+  <td style="width:38%;vertical-align:top">
+    Date ${dot(fmtDate(d.DATE),30)}<br>
+    Time ${d.TIME_START||d.TIME_END ? esc(d.TIME_START)+" - "+esc(d.TIME_END) : "…".repeat(30)}<br>
+    Surgeon ${dot(d.SURGEON,26)}<br>
+    Anesthesiologist ${dot(d.ANESTHESIOLOGIST,20)}<br>
+    First Assistant ${dot(d.FIRST_ASSISTANT,22)}<br>
+    Second Assistant ${dot(d.SECOND_ASSISTANT,20)}<br>
+    Scrub Nurse ${dot(d.SCRUB_NURSE,24)}<br>
+    Circulate Nurse ${dot(d.CIRCULATE_NURSE,21)}<br>
+    Anesthetist ${dot(d.ANESTHETIST,24)}<br>
+    Anesthesia ${dot(d.ANESTHESIA,25)}
+  </td>
+ </tr>
+ <tr>
+  <td style="vertical-align:top">
+    <b>Wound Classification</b><br>
+    ${woundRow(d,"Clean Wound","clean")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Clean Contaminated Wound","clean_contam")}<br>
+    ${woundRow(d,"Contaminated Wound","contam")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Dirty/Infected Wound","dirty")}
+  </td>
+  <td style="vertical-align:top">&nbsp;</td>
+ </tr>
+ <tr>
+  <td colspan="2" style="vertical-align:top">
+    <b>Pathology</b>&nbsp;&nbsp;&nbsp;${cb(d.PATH==="no")} No&nbsp;&nbsp;&nbsp;${cb(d.PATH==="yes")} Yes ${dot(d.PATH_DETAIL,60)}
+  </td>
+ </tr>
+ <tr>
+  <td colspan="2" style="vertical-align:top">
+    Position : ${dot(d.POSITION,80)}<br>
+    Approach : ${dot(d.APPROACH,79)}<br>
+    Finding :<br>
+    ${esc(d.FINDING) || "…".repeat(90)}<br>
+    Procedure :<br>
+    ${anesLine}<br>
+    ${procHtml}<br>
+    <br>
+    Additional Notes : ${esc(d.ADDITIONAL_NOTES)}<br>
+    Drain : ${drainTxt}<br>
+    EBL : ${esc(d.EBL)} ml<br>
+    Complication : ${esc(d.COMPLICATION)}<br>
+    Swab count : ${swabTxt}<br>
+    <br>
+    <p style="text-align:right;margin:2pt 40pt 0 0">Surgeon ………………………………………………………</p>
+    <p style="text-align:right;margin:2pt 40pt 0 0">(${dot(d.SURGEON,40)})</p>
+  </td>
+ </tr>
+</table>
+<p style="margin:4pt 0;font-size:12pt">HN: ${esc(d.HN)}&nbsp;&nbsp;&nbsp;AN: ${esc(d.AN)}&nbsp;&nbsp;&nbsp;${esc(d.PATIENT_NAME)}&nbsp;&nbsp;&nbsp;Age: ${esc(d.AGE)}&nbsp;&nbsp;&nbsp;Ward: ${esc(d.WARD)}</p>`;
+}
+
+function buildDocHtml(d){
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Operative Note</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page {size:A4; margin:36pt;}
+@page Section1 {size:595.3pt 841.9pt; margin:36pt 36pt 36pt 36pt;}
+div.Section1 {page:Section1;}
+body {font-family:"TH SarabunPSK","TH Sarabun New","Sarabun","Angsana New",sans-serif; font-size:13pt; line-height:1.3; margin:0;}
+table,td {border:0.75pt solid black; font-size:13pt;}
+</style></head>
+<body><div class="Section1">${buildBody(d)}</div></body></html>`;
+}
+
+/* ===== actions ===== */
+function fileName(d){
+  const op = OPS[d.OP_TYPE] ? OPS[d.OP_TYPE].slug : (d.OPERATION? d.OPERATION.replace(/[^\wก-๙-]+/g,"-").toLowerCase() : "operative-note");
+  const date = d.DATE || new Date().toISOString().slice(0,10);
+  const hn = d.HN || "noHN";
+  return `OpNote_${hn}_${date}_${op}.doc`;
+}
+
+function exportDoc(){
+  const d = collect();
+  const html = buildDocHtml(d);
+  const blob = new Blob(["﻿"+html], {type:"application/msword;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName(d);
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 800);
+}
+
+function printDoc(){
+  const w = window.open("","_blank");
+  w.document.write(buildDocHtml(collect()));
+  w.document.close();
+  w.onload = () => w.print();
+  setTimeout(()=>{ try{w.print();}catch(e){} }, 500);
+}
+
+function renderPreview(){
+  $("preview").innerHTML = buildBody(collect());
+}
+
+/* ===== prefill Procedure จาก template ของ operation ที่เลือก ===== */
+let lastAutoFill = "";
+function stepsText(name){
+  if(OPS[name]) return OPS[name].steps.map(s =>
+    "- " + s.replace(/\{A\}/g,"{Incision}").replace(/\{F\}/g,"{Findings}").replace(/\{P\}/g,"{Position}")
+  ).join("\n");
+  if(name === OTHER_LABEL) return "After the skin was painted & prepped & draped with a sterile technique\n- ";
+  return "";
+}
+function prefillProcedure(){
+  const text = stepsText($("OP_TYPE").value);
+  const cur = $("OP_DETAIL").value.trim();
+  if(cur && cur !== lastAutoFill.trim()){
+    if(!confirm("แทนที่ข้อความในช่อง Procedure ด้วย template ของ operation ที่เลือก?")) return;
+  }
+  $("OP_DETAIL").value = text;
+  lastAutoFill = text;
+}
+
+/* ===== draft autosave ===== */
+const KEY = "opnote_draft_v2";
+function saveDraft(){
+  const d = collect();
+  localStorage.setItem(KEY, JSON.stringify(d));
+  $("draftBadge").style.display = "inline-block";
+}
+function loadDraft(){
+  const raw = localStorage.getItem(KEY);
+  if(!raw) return;
+  try{
+    const d = JSON.parse(raw);
+    TEXT_IDS.forEach(id => { if(d[id]!==undefined) $(id).value = d[id]; });
+    CB_IDS.forEach(id => { if(d[id]!==undefined) $(id).checked = d[id]; });
+    ["WOUND","PATH","DRAIN","SWAB"].forEach(g=>{
+      if(d[g]){ const el=document.querySelector(`input[name=${g}][value=${d[g]}]`); if(el) el.checked=true; }
+    });
+    lastAutoFill = $("OP_DETAIL").value; // ถือว่าแบบร่างคือค่าเดิม ไม่ต้อง confirm ตอนเปลี่ยน op
+  }catch(e){}
+}
+function clearForm(){
+  if(!confirm("ล้างข้อมูลทั้งหมดในฟอร์ม?")) return;
+  localStorage.removeItem(KEY);
+  document.querySelectorAll("input[type=text],input[type=number],input[type=date],input[type=time],textarea").forEach(el=>el.value="");
+  document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(el=>el.checked=false);
+  $("SURGEON").value=""; $("OP_TYPE").selectedIndex=0;
+  lastAutoFill=""; $("DRAIN_DETAIL").style.display="none";
+  toggleOther(); renderPreview();
+  $("draftBadge").style.display="none";
+}
+
+/* ===== init ===== */
+function toggleOther(){
+  $("opOtherWrap").style.display = ($("OP_TYPE").value === OTHER_LABEL) ? "" : "none";
+}
+(function init(){
+  const sel = $("OP_TYPE");
+  const blank = document.createElement("option"); blank.value=""; blank.textContent="— เลือก Operation —";
+  sel.appendChild(blank);
+  Object.keys(OPS).forEach(name=>{
+    const o=document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
+  });
+  const other=document.createElement("option"); other.value=OTHER_LABEL; other.textContent=OTHER_LABEL; sel.appendChild(other);
+  sel.addEventListener("change", ()=>{ toggleOther(); prefillProcedure(); });
+  document.querySelectorAll('input[name=DRAIN]').forEach(r=>
+    r.addEventListener("change", ()=>{ $("DRAIN_DETAIL").style.display = r.value==="yes"&&r.checked ? "" : "none"; }));
+  loadDraft();
+  toggleOther();
+  const dr = document.querySelector('input[name=DRAIN]:checked');
+  $("DRAIN_DETAIL").style.display = (dr && dr.value==="yes") ? "" : "none";
+  renderPreview();
+  document.querySelectorAll("input,select,textarea").forEach(el=>{
+    el.addEventListener("input", ()=>{ renderPreview(); saveDraft(); });
+    el.addEventListener("change", ()=>{ renderPreview(); saveDraft(); });
+  });
+})();
+</script>
+</body>
+</html>
