@@ -41,8 +41,9 @@
   .hint{font-size:12.5px;color:var(--muted);margin-top:6px}
   /* preview / doc shared look */
   #preview h1{font-size:20px;text-align:center;margin:0 0 10px}
-  #preview table{border-collapse:collapse;width:100%;margin-bottom:10px}
-  #preview td{border:1px solid #444;padding:5px 8px;vertical-align:top;font-size:14px}
+  #preview{overflow-wrap:break-word;word-wrap:break-word}
+  #preview table{border-collapse:collapse;width:100%;margin-bottom:0;table-layout:fixed}
+  #preview td{border:1px solid #444;padding:5px 8px;vertical-align:top;font-size:14px;overflow-wrap:break-word;word-wrap:break-word}
   .badge{background:#fff;color:var(--blue);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700}
 </style>
 </head>
@@ -365,9 +366,9 @@ function buildBody(d){
   const anesLine = `- under ${tech.length ? esc(tech.join(", ")) : "__________"}`;
 
   const procHtml = esc(d.OP_DETAIL)
-    .replace(/\{Incision\}/g, esc(d.APPROACH)||"__________")
-    .replace(/\{Findings\}/g, esc(d.FINDING)||"__________")
-    .replace(/\{Position\}/g, esc(d.POSITION)||"__________");
+    .replace(/\{Incision\}/g, () => esc(d.APPROACH)||"__________")
+    .replace(/\{Findings\}/g, () => esc(d.FINDING)||"__________")
+    .replace(/\{Position\}/g, () => esc(d.POSITION)||"__________");
 
   const drainTxt = d.DRAIN==="yes" ? ("Yes" + (d.DRAIN_DETAIL ? " — "+esc(d.DRAIN_DETAIL) : ""))
                  : d.DRAIN==="no" ? "No" : "";
@@ -414,8 +415,8 @@ function buildBody(d){
     <b>Pathology</b>&nbsp;&nbsp;&nbsp;${cb(d.PATH==="no")} No&nbsp;&nbsp;&nbsp;${cb(d.PATH==="yes")} Yes ${dot(d.PATH_DETAIL,60)}
   </td>
  </tr>
- <tr>
-  <td colspan="2" style="vertical-align:top">
+</table>
+<div style="border:0.75pt solid black;border-top:none;padding:3pt 6pt;overflow-wrap:break-word;word-wrap:break-word">
     Position : ${dot(d.POSITION,80)}<br>
     Approach : ${dot(d.APPROACH,79)}<br>
     Finding :<br>
@@ -428,13 +429,12 @@ function buildBody(d){
     Drain : ${drainTxt}<br>
     EBL : ${esc(d.EBL)} ml<br>
     Complication : ${esc(d.COMPLICATION)}<br>
-    Swab count : ${swabTxt}<br>
-    <br>
-    <p style="text-align:right;margin:2pt 40pt 0 0">Surgeon ………………………………………………………</p>
-    <p style="text-align:right;margin:2pt 40pt 0 0">(${dot(d.SURGEON,40)})</p>
-  </td>
- </tr>
-</table>
+    Swab count : ${swabTxt}
+    <div style="page-break-inside:avoid">
+      <p style="text-align:right;margin:6pt 40pt 2pt 0">Surgeon ………………………………………………………</p>
+      <p style="text-align:right;margin:2pt 40pt 2pt 0">(${dot(d.SURGEON,40)})</p>
+    </div>
+</div>
 <p style="margin:4pt 0;font-size:12pt">HN: ${esc(d.HN)}&nbsp;&nbsp;&nbsp;AN: ${esc(d.AN)}&nbsp;&nbsp;&nbsp;${esc(d.PATIENT_NAME)}&nbsp;&nbsp;&nbsp;Age: ${esc(d.AGE)}&nbsp;&nbsp;&nbsp;Ward: ${esc(d.WARD)}</p>`;
 }
 
@@ -447,7 +447,10 @@ function buildDocHtml(d){
 @page Section1 {size:595.3pt 841.9pt; margin:36pt 36pt 36pt 36pt;}
 div.Section1 {page:Section1;}
 body {font-family:"TH SarabunPSK","TH Sarabun New","Sarabun","Angsana New",sans-serif; font-size:13pt; line-height:1.3; margin:0;}
+table {border-collapse:collapse; width:100%; table-layout:fixed;}
 table,td {border:0.75pt solid black; font-size:13pt;}
+td {overflow-wrap:break-word; word-wrap:break-word;}
+p,div {orphans:2; widows:2;}
 </style></head>
 <body><div class="Section1">${buildBody(d)}</div></body></html>`;
 }
