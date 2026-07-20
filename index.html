@@ -147,6 +147,11 @@
       </div>
       <div class="full"><label>Procedure (เลือก Operation แล้วขั้นตอนมาตรฐานจะถูกใส่ให้อัตโนมัติ — แก้ไขได้)</label><textarea id="OP_DETAIL" rows="7"></textarea>
         <div class="hint">คำว่า {Incision} {Findings} {Position} ในข้อความ จะถูกแทนด้วยข้อมูลจากช่องนั้นๆ ตอน export</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="saveMyTemplate()">💾 บันทึกเป็น template ของฉัน</button>
+          <button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="resetTemplate()">↩ คืนค่า template เดิม</button>
+        </div>
+        <div class="hint">บันทึก template: ข้อความในช่อง Procedure จะถูกจำไว้ในเครื่อง — เลือก operation เดิมครั้งหน้าจะได้ template ที่แก้แล้ว (มี ★ ในลิสต์) • ถ้าเลือก Other แล้วพิมพ์ชื่อ operation ใหม่ก่อนบันทึก จะเพิ่มเป็น operation ใหม่ในลิสต์เลย</div>
       </div>
       <div class="full"><label>Additional Notes</label><textarea id="ADDITIONAL_NOTES"></textarea></div>
       <div class="full"><label>Pre-op Antibiotics</label><input type="text" id="PREOP_ATB" placeholder="เช่น Cefazolin 2 g IV"></div>
@@ -355,8 +360,13 @@ const DEFAULT_LISTS = {
   SURGEON:["น.พ. ธีรินทร์ โชติเรืองประเสริฐ","น.พ. วิชญะ วงษ์พิทักษ์","น.พ. จิระ เนินคีรี",
     "พ.ญ. พิชชา ลิขิตผลจรูญ","พ.ญ. ณัฐพร มณีไพโรจน์","น.พ. ศวิษฐ์ ทนงกิจ",
     "น.พ. พงษ์พิริยะ ฟูประเสริฐ","น.พ. พรหมพร รัตนชินกร","น.พ. ก้องเกียรติ จุฬพุฒิพงษ์"],
-  ANESTHESIOLOGIST:[], FIRST_ASSISTANT:[], SECOND_ASSISTANT:[],
-  SCRUB_NURSE:[], CIRCULATE_NURSE:[], ANESTHETIST:[],
+  ANESTHESIOLOGIST:["พญ.พนาภรณ์ คงมั่น","พญ.วรัญญา ธรรมวิทยากุล","พญ.สโรชา ศรีสวัสดิ์",
+    "พญ.จุฑามาศ สิทัน","นพ.ชนิตพล อำพรวิชัย","พญ.อรพิมล ธนภูวนนท์"],
+  FIRST_ASSISTANT:[], SECOND_ASSISTANT:[],
+  SCRUB_NURSE:[], CIRCULATE_NURSE:[],
+  ANESTHETIST:["น.ส.ดวงกมล วงค์มา","น.ส.จินตนา ศรีสุข","นางชุติมนต์ จันทร์พูนทรัพย์",
+    "น.ส.วรรณรัตน์ ครองบุญ","น.ส.ศศิประภา สังข์สัจจธรรม","น.ส.วริณีย์ ภารวงษ์",
+    "น.ส.สุภาภรณ์ ศรีสรรค์","น.ส.กนกวรรณ ใจรัศมี","น.ส.อภิญญา แคล้วณรงค์"],
   ANESTHESIA:["General anesthesia with ETT","General anesthesia with LMA","TIVA",
     "Spinal block","Regional block","Local anesthesia","MAC"]
 };
@@ -612,12 +622,67 @@ function renderPreview(){
 
 /* ===== prefill Procedure จาก template ของ operation ที่เลือก ===== */
 let lastAutoFill = "";
+
+/* template ที่ user บันทึกเอง (เก็บใน localStorage) */
+const TKEY = "opnote_custom_templates_v1";
+function getTemplates(){
+  try{ return JSON.parse(localStorage.getItem(TKEY)||"{}"); }catch(e){ return {}; }
+}
+function setTemplates(t){ localStorage.setItem(TKEY, JSON.stringify(t)); }
+
 function stepsText(name){
+  const custom = getTemplates();
+  if(custom[name] !== undefined) return custom[name];
   if(OPS[name]) return OPS[name].steps.map(s =>
     "- " + s.replace(/\{A\}/g,"{Incision}").replace(/\{F\}/g,"{Findings}").replace(/\{P\}/g,"{Position}")
   ).join("\n");
   if(name === OTHER_LABEL) return "After the skin was painted & prepped & draped with a sterile technique\n- ";
   return "";
+}
+
+function rebuildOpSelect(val){
+  const sel = $("OP_TYPE");
+  const cur = val!==undefined ? val : sel.value;
+  const custom = getTemplates();
+  sel.innerHTML = "";
+  const mk=(v,t)=>{const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o);};
+  mk("","— เลือก Operation —");
+  Object.keys(OPS).forEach(name=> mk(name, custom[name]!==undefined ? "★ "+name : name));
+  Object.keys(custom).filter(n=> !OPS[n] && n!==OTHER_LABEL).sort()
+    .forEach(name=> mk(name, "★ "+name));
+  mk(OTHER_LABEL, OTHER_LABEL);
+  if(cur && [...sel.options].some(o=>o.value===cur)) sel.value=cur; else sel.value="";
+}
+
+function saveMyTemplate(){
+  const opSel = $("OP_TYPE").value;
+  const name = opSel===OTHER_LABEL ? $("OP_OTHER").value.trim() : opSel;
+  if(!name){ alert("เลือก Operation ก่อน (กรณี Other ให้พิมพ์ชื่อ operation ด้วย)"); return; }
+  const text = $("OP_DETAIL").value;
+  if(!text.trim()){ alert("ช่อง Procedure ยังว่างอยู่"); return; }
+  const t = getTemplates(); t[name] = text; setTemplates(t);
+  rebuildOpSelect(name); toggleOther();
+  lastAutoFill = text;
+  toast('💾 บันทึก template "'+name+'" แล้ว — ใช้ได้ทุกครั้งที่เลือก operation นี้');
+  renderPreview(); saveDraft();
+}
+
+function resetTemplate(){
+  const name = $("OP_TYPE").value;
+  const t = getTemplates();
+  if(!name || t[name]===undefined){ toast("operation นี้ยังไม่มี template ที่บันทึกเอง"); return; }
+  if(!confirm('ลบ template ที่บันทึกเองของ "'+name+'" และคืนค่า template เดิม?')) return;
+  delete t[name]; setTemplates(t);
+  if(OPS[name]){
+    rebuildOpSelect(name);
+    $("OP_DETAIL").value = stepsText(name);
+  } else {
+    rebuildOpSelect("");
+    $("OP_DETAIL").value = "";
+  }
+  lastAutoFill = $("OP_DETAIL").value;
+  toggleOther(); renderPreview(); saveDraft();
+  toast("↩ คืนค่า template เดิมแล้ว");
 }
 function prefillProcedure(){
   const text = stepsText($("OP_TYPE").value);
@@ -679,14 +744,8 @@ function toggleOther(){
   });
   $("SHEET_URL").value = getSheetUrl();
   $("SHEET_URL").addEventListener("input", ()=> localStorage.setItem(SKEY, $("SHEET_URL").value.trim()));
-  const sel = $("OP_TYPE");
-  const blank = document.createElement("option"); blank.value=""; blank.textContent="— เลือก Operation —";
-  sel.appendChild(blank);
-  Object.keys(OPS).forEach(name=>{
-    const o=document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
-  });
-  const other=document.createElement("option"); other.value=OTHER_LABEL; other.textContent=OTHER_LABEL; sel.appendChild(other);
-  sel.addEventListener("change", ()=>{ toggleOther(); prefillProcedure(); });
+  rebuildOpSelect("");
+  $("OP_TYPE").addEventListener("change", ()=>{ toggleOther(); prefillProcedure(); });
   document.querySelectorAll('input[name=DRAIN]').forEach(r=>
     r.addEventListener("change", ()=>{ $("DRAIN_DETAIL").style.display = r.value==="yes"&&r.checked ? "" : "none"; }));
   loadDraft();
