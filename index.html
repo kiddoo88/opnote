@@ -549,13 +549,18 @@ function fileName(d){
 
 /* ===== ส่งข้อมูลลง Google Sheet ผ่าน Apps Script Web App ===== */
 const SKEY = "opnote_sheet_url";
+const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbx5qEjHkwxgSzvqwWuHiDv6QC10mpYoOVo8-g96NpIKFBSry3FAZuuhJZ8qBTTmBFFX/exec";
+function getSheetUrl(){
+  const v = localStorage.getItem(SKEY);
+  return (v===null ? DEFAULT_SHEET_URL : v).trim(); // เคยลบทิ้งเอง = ปิดการส่ง
+}
 let toastTimer = null;
 function toast(msg){
   const t=$("toast"); t.textContent=msg; t.style.display="block";
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.style.display="none";},4000);
 }
 function sendToSheet(d){
-  const url=(localStorage.getItem(SKEY)||"").trim();
+  const url=getSheetUrl();
   if(!url) return;
   const p={Timestamp:new Date().toLocaleString("th-TH"),
     PATIENT_NAME:d.PATIENT_NAME,HN:d.HN,AN:d.AN,AGE:d.AGE,WARD:d.WARD,
@@ -672,7 +677,7 @@ function toggleOther(){
     fillPeopleSelect(id);
     $(id).addEventListener("change", handlePeopleChange);
   });
-  $("SHEET_URL").value = localStorage.getItem(SKEY)||"";
+  $("SHEET_URL").value = getSheetUrl();
   $("SHEET_URL").addEventListener("input", ()=> localStorage.setItem(SKEY, $("SHEET_URL").value.trim()));
   const sel = $("OP_TYPE");
   const blank = document.createElement("option"); blank.value=""; blank.textContent="— เลือก Operation —";
