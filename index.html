@@ -633,11 +633,36 @@ function exportDoc(){
 
 function printDoc(){
   const d = collect();
-  const w = window.open("","_blank");
-  w.document.write(buildDocHtml(d, true));
-  w.document.close();
-  w.onload = () => w.print();
-  setTimeout(()=>{ try{w.print();}catch(e){} }, 500);
+  // พิมพ์ผ่าน iframe ที่ซ่อนไว้ -> ขึ้นเฉพาะหน้าต่าง Print ไม่เปิดแท็บใหม่
+  const old = document.getElementById("printFrame");
+  if(old) old.remove();
+  const f = document.createElement("iframe");
+  f.id = "printFrame";
+  f.setAttribute("aria-hidden","true");
+  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(f);
+
+  let done = false;
+  const go = () => {
+    if(done) return; done = true;
+    try{
+      const win = f.contentWindow;
+      win.focus();
+      win.onafterprint = () => setTimeout(()=>f.remove(), 300);
+      win.print();
+      setTimeout(()=>{ if(document.getElementById("printFrame")) f.remove(); }, 60000);
+    }catch(e){
+      toast("พิมพ์ไม่สำเร็จ: " + e.message);
+      f.remove();
+    }
+  };
+  f.onload = () => setTimeout(go, 120);
+
+  const doc = f.contentWindow.document;
+  doc.open();
+  doc.write(buildDocHtml(d, true));
+  doc.close();
+  setTimeout(go, 800); // สำรองกรณี onload ไม่ยิง
   sendToSheet(d);
 }
 
