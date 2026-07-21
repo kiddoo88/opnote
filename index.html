@@ -366,6 +366,24 @@ const DEFAULT_LISTS = {
     "น.พ. พงษ์พิริยะ ฟูประเสริฐ","น.พ. พรหมพร รัตนชินกร","น.พ. ก้องเกียรติ จุฬพุฒิพงษ์"],
   ANESTHESIOLOGIST:["พญ.พนาภรณ์ คงมั่น","พญ.วรัญญา ธรรมวิทยากุล","พญ.สโรชา ศรีสวัสดิ์",
     "พญ.จุฑามาศ สิทัน","นพ.ชนิตพล อำพรวิชัย","พญ.อรพิมล ธนภูวนนท์"],
+  OR_STAFF: [
+    "น.ส.ไปรยา โสวรรณะ",
+    "น.ส.นันท์ปภัทร์ ประวาฬ",
+    "น.ส.ปาริชาติ วินาโท",
+    "น.ส.อนุธิดา หงษาพันธ์",
+    "น.ส.วิภาวรรณ วัสสานกูล",
+    "น.ส.วริศรา เมืองชุมพล",
+    "น.ส.สุขิตา เครือแก้ว",
+    "นางมะลิวัลย์ สิงหบุตร",
+    "น.ส.บังอร นามะ",
+    "นางแพรวพรรณ กล้าดี",
+    "นายอัครัช ห่างไธสง",
+    "นางขวัญใจ คำประไพ",
+    "น.ส.อชิรญา กายดีสุด",
+    "น.ส.กิตติกานต์ อาจไธสง",
+    "น.ส.ณัฏฐณิชา เทพบุรี",
+    "น.ส.วงค์ชนก เสนาวงค์",
+    "น.ส.พรรณวษา โกษาแสง"],
   FIRST_ASSISTANT:[], SECOND_ASSISTANT:[],
   SCRUB_NURSE:[], CIRCULATE_NURSE:[],
   ANESTHETIST:["น.ส.ดวงกมล วงค์มา","น.ส.จินตนา ศรีสุข","นางชุติมนต์ จันทร์พูนทรัพย์",
@@ -374,6 +392,9 @@ const DEFAULT_LISTS = {
   ANESTHESIA:["General anesthesia with ETT","General anesthesia with LMA","TIVA",
     "Spinal block","Regional block","Local anesthesia","MAC"]
 };
+["FIRST_ASSISTANT","SECOND_ASSISTANT","SCRUB_NURSE","CIRCULATE_NURSE"]
+  .forEach(k=>{ DEFAULT_LISTS[k] = DEFAULT_LISTS.OR_STAFF.slice(); });
+delete DEFAULT_LISTS.OR_STAFF;
 const PEOPLE_IDS = Object.keys(DEFAULT_LISTS);
 function getLists(){
   try{
