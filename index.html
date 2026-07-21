@@ -470,7 +470,7 @@ function buildBody(d, FS=13){
   const swabTxt = {corrected:"Corrected", incorrected:"Incorrected", na:"N/A"}[d.SWAB] || "";
 
   const woundRow = (v,label,key)=> `${cb(d.WOUND===key)} ${label}`;
-  const dot = (v,n)=> v ? esc(v) : "…".repeat(n);
+  const dot = (v,n)=> v ? esc(v) : "-";
   const FT = FS + 3; // ขนาดหัวเรื่อง = ตัวเนื้อหา +3pt
 
   return `
@@ -487,7 +487,7 @@ function buildBody(d, FS=13){
   </td>
   <td style="width:38%;vertical-align:top">
     Date ${dot(fmtDate(d.DATE),30)}<br>
-    Time ${d.TIME_START||d.TIME_END ? esc(d.TIME_START)+" - "+esc(d.TIME_END) : "…".repeat(30)}<br>
+    Time ${d.TIME_START||d.TIME_END ? esc(d.TIME_START)+" - "+esc(d.TIME_END) : "-"}<br>
     Surgeon ${dot(d.SURGEON,26)}<br>
     Anesthesiologist ${dot(d.ANESTHESIOLOGIST,20)}<br>
     First Assistant ${dot(d.FIRST_ASSISTANT,22)}<br>
@@ -516,7 +516,7 @@ function buildBody(d, FS=13){
     Position : ${dot(d.POSITION,80)}<br>
     Approach : ${dot(d.APPROACH,79)}<br>
     Finding :<br>
-    ${esc(d.FINDING) || "…".repeat(90)}<br>
+    ${esc(d.FINDING) || "-"}<br>
     Pre-op antibiotics : ${esc(d.PREOP_ATB)}<br>
     Procedure :<br>
     ${anesLine}<br>
@@ -528,7 +528,7 @@ function buildBody(d, FS=13){
     Complication : ${esc(d.COMPLICATION)}<br>
     Swab count : ${swabTxt}
     <div style="page-break-inside:avoid">
-      <p style="text-align:right;margin:6pt 40pt 2pt 0">Surgeon ………………………………………………………</p>
+      <p style="text-align:right;margin:6pt 40pt 2pt 0">Surgeon -</p>
       <p style="text-align:right;margin:2pt 40pt 2pt 0">(${dot(d.SURGEON,40)})</p>
     </div>
 </div>
