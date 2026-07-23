@@ -506,7 +506,7 @@ function buildBody(d, FS=13){
     Post-Operative Diagnosis : ${dot(d.POST_OP_DX,44)}<br>
     Operation : ${dot(d.OPERATION,55)}
   </td>
-  <td style="width:38%;vertical-align:top">
+  <td rowspan="2" style="width:38%;vertical-align:top">
     Date ${dot(fmtDate(d.DATE),30)}<br>
     Time ${d.TIME_START||d.TIME_END ? esc(d.TIME_START)+" - "+esc(d.TIME_END) : "-"}<br>
     Surgeon ${dot(d.SURGEON,26)}<br>
@@ -525,7 +525,6 @@ function buildBody(d, FS=13){
     ${woundRow(d,"Clean Wound","clean")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Clean Contaminated Wound","clean_contam")}<br>
     ${woundRow(d,"Contaminated Wound","contam")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Dirty/Infected Wound","dirty")}
   </td>
-  <td style="vertical-align:top">&nbsp;</td>
  </tr>
  <tr>
   <td colspan="2" style="vertical-align:top">
@@ -631,6 +630,24 @@ function exportDoc(){
   sendToSheet(d);
 }
 
+/* ===== ย่อเนื้อหาอัตโนมัติให้พอดี A4 หน้าเดียวตอนพิมพ์ ===== */
+function fitOnePage(win){
+  try{
+    const doc = win.document;
+    const page = doc.querySelector(".Section1") || doc.body;
+    const PX = 96/72;                    // pt -> px
+    const availH = (841.9 - 72) * PX;    // พื้นที่พิมพ์แนวตั้ง (A4 สูง 841.9pt - margin บน/ล่าง 36pt)
+    let scale = 1;
+    for(let i=0;i<5;i++){
+      const h = page.getBoundingClientRect().height;
+      if(h <= availH + 1) break;
+      scale = Math.max(0.4, scale * (availH / h) * 0.985); // กันเศษปัดขึ้นหน้าใหม่
+      doc.body.style.zoom = scale;
+      if(scale <= 0.4) break;
+    }
+  }catch(e){ /* browser ไม่รองรับ zoom ก็พิมพ์ตามปกติ */ }
+}
+
 function printDoc(){
   const d = collect();
   // พิมพ์ผ่าน iframe ที่ซ่อนไว้ -> ขึ้นเฉพาะหน้าต่าง Print ไม่เปิดแท็บใหม่
@@ -639,7 +656,9 @@ function printDoc(){
   const f = document.createElement("iframe");
   f.id = "printFrame";
   f.setAttribute("aria-hidden","true");
-  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  // กว้างเท่าพื้นที่พิมพ์จริงของ A4 (595.3pt - margin 72pt = 523.3pt ≈ 698px)
+  // เพื่อให้การตัดบรรทัด/วัดความสูงตรงกับตอนพิมพ์
+  f.style.cssText = "position:fixed;left:-10000px;top:0;width:698px;height:1100px;border:0;visibility:hidden";
   document.body.appendChild(f);
 
   let done = false;
@@ -647,6 +666,7 @@ function printDoc(){
     if(done) return; done = true;
     try{
       const win = f.contentWindow;
+      fitOnePage(win);   // ย่อให้พอดีหน้าเดียวก่อนสั่งพิมพ์
       win.focus();
       win.onafterprint = () => setTimeout(()=>f.remove(), 300);
       win.print();
@@ -656,7 +676,11 @@ function printDoc(){
       f.remove();
     }
   };
-  f.onload = () => setTimeout(go, 120);
+  f.onload = () => {
+    // รอฟอนต์โหลดก่อนวัดขนาด เพื่อให้ auto-fit แม่นยำ
+    const fonts = f.contentWindow.document.fonts;
+    (fonts && fonts.ready ? fonts.ready : Promise.resolve()).then(()=>setTimeout(go, 120));
+  };
 
   const doc = f.contentWindow.document;
   doc.open();
