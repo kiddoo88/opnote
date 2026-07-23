@@ -506,7 +506,7 @@ function buildBody(d, FS=13){
     Post-Operative Diagnosis : ${dot(d.POST_OP_DX,44)}<br>
     Operation : ${dot(d.OPERATION,55)}
   </td>
-  <td style="width:38%;vertical-align:top">
+  <td rowspan="2" style="width:38%;vertical-align:top">
     Date ${dot(fmtDate(d.DATE),30)}<br>
     Time ${d.TIME_START||d.TIME_END ? esc(d.TIME_START)+" - "+esc(d.TIME_END) : "-"}<br>
     Surgeon ${dot(d.SURGEON,26)}<br>
@@ -525,7 +525,6 @@ function buildBody(d, FS=13){
     ${woundRow(d,"Clean Wound","clean")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Clean Contaminated Wound","clean_contam")}<br>
     ${woundRow(d,"Contaminated Wound","contam")}&nbsp;&nbsp;&nbsp;&nbsp;${woundRow(d,"Dirty/Infected Wound","dirty")}
   </td>
-  <td style="vertical-align:top">&nbsp;</td>
  </tr>
  <tr>
   <td colspan="2" style="vertical-align:top">
