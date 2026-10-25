@@ -228,22 +228,6 @@
   </div>
   <div class="hint">Export PDF: กดปุ่มแล้วในหน้าต่างพิมพ์เลือกเครื่องพิมพ์เป็น <b>"Save as PDF / บันทึกเป็น PDF"</b> — ได้ไฟล์ตามแบบฟอร์ม IPD-OR-019 • ข้อมูลบันทึกแบบร่างในเครื่องอัตโนมัติ</div>
 
-  <details class="card" style="margin-top:14px" id="settingsBox">
-    <summary style="cursor:pointer;font-weight:700;color:var(--blue-dark)">⚙️ เชื่อมต่อ Google Sheet (ตั้งค่าครั้งเดียวต่อเครื่อง)</summary>
-    <div style="margin-top:10px">
-      <label>Web App URL (จาก Google Apps Script)</label>
-      <input type="text" id="SHEET_URL" placeholder="https://script.google.com/macros/s/…/exec">
-      <label style="margin-top:8px">รหัสสำหรับบันทึกข้อมูล (OPNOTE_KEY)</label>
-      <input type="text" id="SHEET_KEY" autocomplete="off" placeholder="รหัสที่ตั้งไว้ใน Apps Script">
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="testSheet()">🔌 ทดสอบการเชื่อมต่อ</button>
-        <button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="loadRemote(true)">🔄 โหลด ICD-9 / template ใหม่</button>
-        <button type="button" class="ghost" style="padding:6px 12px;font-size:13px;display:none" id="migrateBtn" onclick="migrateLocalTemplates()">⬆ ย้าย template เดิมในเครื่องขึ้น Sheet</button>
-        <span id="SHEET_TEST_RESULT" style="font-size:13px"></span>
-      </div>
-      <div class="hint">URL ใช้โหลดรายการ ICD-9 (จาก p4pSx) และ template • รหัส OPNOTE_KEY ใช้ตอนบันทึกเคสลง Sheet และบันทึก/ลบ template — ไม่มีรหัส = ใช้งานได้ แต่ไม่บันทึกอะไรลง Sheet • วิธีติดตั้งดูในไฟล์ <b>opnote_sheet_webapp.gs</b></div>
-    </div>
-  </details>
 
 </div>
 <div id="toast"></div>
@@ -381,11 +365,9 @@ const OPS = {
 };
 const OTHER_LABEL = "Other (เขียนขั้นตอนเอง)";
 
-/* ===== ตั้งค่าการเชื่อมต่อ Google Sheet =====
-   ใส่ URL ของ Web App (Deploy แล้ว) ที่นี่ เพื่อให้ทุกเครื่องโหลด ICD-9 / template ได้ทันที
-   (URL นี้เปิดให้ "อ่าน" รายการ ICD-9 และ template เท่านั้น — การบันทึกต้องใช้รหัส OPNOTE_KEY ที่กรอกในแต่ละเครื่อง) */
-const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbx35WefrupojGSybPVWONgAm1lfAJ1Kqn5uDsPt8eBEhdrUBol2Yox1nF1BbWdtMebY/exec";
-const SKEY = "opnote_sheet_url", KKEY = "opnote_sheet_key";
+/* ===== การเชื่อมต่อ Google Sheet =====
+   ใส่ URL /exec ของ Apps Script Web App (Deploy แล้ว) ระหว่างเครื่องหมายคำพูด — ทุกเครื่องใช้ค่านี้ */
+const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbwXc13AfpX5WAcjAP0lkJqOrhqCsWVcYjEgvpHvyyDffW__fB50D7doq7bXB5CXrjdw/exec";
 const CACHE_KEY = "opnote_remote_cache_v1";      // ICD-9 + templates ล่าสุดที่โหลดได้ (ใช้ตอน offline)
 const OLD_TKEY = "opnote_custom_templates_v1";   // template แบบเดิมที่เก็บในเครื่อง (ไว้ย้ายขึ้น Sheet)
 
@@ -566,7 +548,7 @@ function setupOpSearch(){
   const draw=()=>{
     list.innerHTML="";
     if(!remote.ops.length){
-      list.innerHTML='<div class="ac-empty">ยังไม่มีรายการ ICD-9 — ตั้งค่า Web App URL ใน ⚙️ ด้านล่าง หรือพิมพ์ในช่องรายละเอียดเพิ่มเติมแทน</div>';
+      list.innerHTML='<div class="ac-empty">ยังโหลดรายการ ICD-9 ไม่ได้ — พิมพ์ในช่องรายละเอียดเพิ่มเติมแทนได้</div>';
     } else if(!items.length){
       list.innerHTML='<div class="ac-empty">ไม่พบ — พิมพ์ชื่อ operation ในช่อง “รายละเอียดเพิ่มเติม” แทนได้</div>';
     }
@@ -758,11 +740,7 @@ p,div {orphans:2; widows:2;}
 }
 
 /* ===== Google Sheet (Apps Script Web App) ===== */
-function getSheetUrl(){
-  const v = localStorage.getItem(SKEY);
-  return (v===null ? DEFAULT_SHEET_URL : v).trim();
-}
-function getSheetKey(){ return (localStorage.getItem(KKEY)||"").trim(); }
+function getSheetUrl(){ return DEFAULT_SHEET_URL.trim(); }
 
 let toastTimer = null;
 function toast(msg){
@@ -772,12 +750,11 @@ function toast(msg){
 
 /* POST ไป Apps Script แล้วอ่านผลจริง (ไม่ยิงซ้ำ — server ใช้ NOTE_ID กันแถวซ้ำอยู่แล้ว) */
 function postAction(action, data){
-  const url=getSheetUrl(), key=getSheetKey();
-  if(!url) return Promise.reject(new Error("ยังไม่ได้ตั้งค่า Web App URL"));
-  if(!key) return Promise.reject(new Error("ยังไม่ได้ใส่รหัส OPNOTE_KEY"));
+  const url=getSheetUrl();
+  if(!url) return Promise.reject(new Error("ยังไม่ได้ใส่ DEFAULT_SHEET_URL ในโค้ด"));
   return fetch(url,{method:"POST",redirect:"follow",
       headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action, key, data})})
+      body:JSON.stringify({action, data})})
     .then(r=>r.text())
     .then(t=>{
       let j; try{ j=JSON.parse(t); }catch(e){ throw new Error("Sheet ตอบกลับผิดรูปแบบ: "+t.slice(0,120)); }
@@ -808,18 +785,10 @@ function buildSheetPayload(d){
 }
 
 function sendToSheet(d){
-  if(!getSheetUrl() || !getSheetKey()) return;   // ไม่ได้ตั้งค่า = ไม่ส่ง
+  if(!getSheetUrl()) return;   // ไม่ได้ตั้งค่า URL = ไม่ส่ง
   postAction("record", buildSheetPayload(d))
     .then(j=> toast(j.updated ? "✅ อัปเดตแถวเดิมใน Google Sheet แล้ว" : "✅ บันทึกลง Google Sheet แล้ว"))
     .catch(err=> toast("⚠️ บันทึกลง Sheet ไม่สำเร็จ: "+err.message));
-}
-
-function testSheet(){
-  const out=$("SHEET_TEST_RESULT");
-  out.style.color="#5b6b7d"; out.textContent="⏳ กำลังทดสอบ…";
-  postAction("ping",{})
-    .then(()=>{ out.style.color="#1a7f37"; out.textContent="✅ เชื่อมต่อได้ และรหัสถูกต้อง (ไม่มีการเขียนข้อมูล)"; loadRemote(true); })
-    .catch(err=>{ out.style.color="#b3261e"; out.textContent="❌ "+err.message; });
 }
 
 /* ===== โหลด ICD-9 + templates จาก Sheet ===== */
@@ -833,7 +802,7 @@ function setOpsStatus(msg, bad){
 function loadRemote(manual){
   const url=getSheetUrl();
   if(!url){
-    setOpsStatus("ยังไม่ได้ตั้งค่า Web App URL (⚙️ ด้านล่าง) — ใช้ช่องรายละเอียดเพิ่มเติมแทนได้", true);
+    setOpsStatus("ยังไม่ได้ใส่ DEFAULT_SHEET_URL ในโค้ด — ใช้ช่องรายละเอียดเพิ่มเติมแทนได้", true);
     return Promise.resolve();
   }
   setOpsStatus("⏳ กำลังโหลดรายการ ICD-9 และ template…");
@@ -848,6 +817,7 @@ function loadRemote(manual){
       applyRemote(r);
       setOpsStatus(`ICD-9 ${r.ops.length} รายการ • template ใน Sheet ${Object.keys(tpl).length} รายการ`);
       if(manual) toast("🔄 โหลดข้อมูลจาก Sheet แล้ว");
+      migrateLocalTemplates();
     })
     .catch(err=>{
       const age = remote.loadedAt ? " (ใช้ข้อมูลที่เก็บไว้เมื่อ "+new Date(remote.loadedAt).toLocaleString("th-TH")+")" : "";
@@ -932,27 +902,23 @@ function prefillProcedure(){
   lastAutoFill = text;
 }
 
-/* template แบบเดิมที่เก็บไว้ในเครื่อง → ย้ายขึ้น Sheet */
+/* template แบบเดิมที่เก็บไว้ในเครื่อง → ย้ายขึ้น Sheet อัตโนมัติหลังโหลดข้อมูลสำเร็จ */
 function oldLocalTemplates(){
   try{ return JSON.parse(localStorage.getItem(OLD_TKEY)||"{}"); }catch(e){ return {}; }
-}
-function refreshMigrateBtn(){
-  $("migrateBtn").style.display = Object.keys(oldLocalTemplates()).length ? "" : "none";
 }
 async function migrateLocalTemplates(){
   const old = oldLocalTemplates(), names = Object.keys(old);
   if(!names.length) return;
-  if(!confirm("ย้าย template ในเครื่องนี้ "+names.length+" รายการขึ้น Sheet?\n"+names.join("\n"))) return;
   let ok=0;
   for(const n of names){
     try{ await postAction("saveTemplate",{name:n, text:old[n]}); remote.templates[n]=old[n]; delete old[n]; ok++; }
-    catch(err){ alert('ย้าย "'+n+'" ไม่สำเร็จ: '+err.message); break; }
+    catch(err){ break; }   // ลองใหม่อัตโนมัติครั้งหน้าที่เปิดหน้า
   }
   if(Object.keys(old).length) localStorage.setItem(OLD_TKEY, JSON.stringify(old));
   else localStorage.removeItem(OLD_TKEY);
   localStorage.setItem(CACHE_KEY, JSON.stringify(remote));
-  rebuildOpSelect(); refreshMigrateBtn();
-  toast("⬆ ย้าย template ขึ้น Sheet แล้ว "+ok+" รายการ");
+  rebuildOpSelect();
+  if(ok) toast("⬆ ย้าย template เดิมในเครื่องขึ้น Sheet แล้ว "+ok+" รายการ");
 }
 
 /* ===== ย่อเนื้อหาอัตโนมัติให้พอดี A4 หน้าเดียวตอนพิมพ์ ===== */
@@ -1052,14 +1018,14 @@ function loadDraft(){
 function clearForm(){
   if(!confirm("ล้างข้อมูลทั้งหมดในฟอร์ม?")) return;
   localStorage.removeItem(KEY);
-  const keepUrl = $("SHEET_URL").value, keepKey = $("SHEET_KEY").value, keepSize = $("PRINT_SIZE").value;
+  const keepSize = $("PRINT_SIZE").value;
   document.querySelectorAll("input[type=text],input[type=number],input[type=date],input[type=time],textarea").forEach(el=>el.value="");
   document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(el=>el.checked=false);
   document.querySelectorAll(".invalid").forEach(el=>el.classList.remove("invalid"));
   PEOPLE_IDS.forEach(id=>{ $(id).value=""; });
   $("WOUND").value=""; $("OP_TYPE").value="";
   $("COMPLICATION").value="none";
-  $("SHEET_URL").value=keepUrl; $("SHEET_KEY").value=keepKey; $("PRINT_SIZE").value=keepSize;
+  $("PRINT_SIZE").value=keepSize;
   selectedOps=[]; renderOpList();
   noteId=newNoteId();
   clearSignature();
@@ -1074,10 +1040,7 @@ function clearForm(){
     fillPeopleSelect(id);
     $(id).addEventListener("change", handlePeopleChange);
   });
-  $("SHEET_URL").value = getSheetUrl();
-  $("SHEET_KEY").value = getSheetKey();
-  $("SHEET_URL").addEventListener("change", ()=>{ localStorage.setItem(SKEY, $("SHEET_URL").value.trim()); loadRemote(true); });
-  $("SHEET_KEY").addEventListener("input", ()=> localStorage.setItem(KKEY, $("SHEET_KEY").value.trim()));
+  localStorage.removeItem("opnote_sheet_url"); localStorage.removeItem("opnote_sheet_key");   // ค่าตั้งเดิมจากช่อง ⚙️ (เลิกใช้แล้ว)
   try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null"); if(c) applyRemote(c); }catch(e){}
   rebuildOpSelect("");
   $("OP_TYPE").addEventListener("change", prefillProcedure);
@@ -1091,15 +1054,13 @@ function clearForm(){
   const dr = document.querySelector('input[name=DRAIN]:checked');
   $("DRAIN_DETAIL").style.display = (dr && dr.value==="yes") ? "" : "none";
   renderPreview();
-  const skip = new Set(["SHEET_URL","SHEET_KEY","OP_SEARCH"]);
+  const skip = new Set(["OP_SEARCH"]);
   document.querySelectorAll("input,select,textarea").forEach(el=>{
     if(skip.has(el.id)) return;
     const h=()=>{ el.classList.remove("invalid"); renderPreview(); saveDraft(); };
     el.addEventListener("input", h);
     el.addEventListener("change", h);
   });
-  refreshMigrateBtn();
-  if(!getSheetUrl()) $("settingsBox").open = true;
   loadRemote(false);
 })();
 </script>
