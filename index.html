@@ -423,8 +423,10 @@ function setupSignature(){
 
 function fmtDate(iso){
   if(!iso) return "";
-  const [y,m,d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+  const [y,m,d] = iso.split("-").map(Number);
+  const TH_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+    "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  return `${d} ${TH_MONTHS[m-1]} ${y+543}`;
 }
 
 const TEXT_IDS = ["PATIENT_NAME","HN","AN","AGE","WARD","DATE","TIME_START","TIME_END",
