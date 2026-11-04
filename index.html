@@ -120,7 +120,7 @@
     <h2>OPERATION</h2>
     <div class="grid">
       <div class="full">
-        <label class="req">Operation (ICD-9)</label>
+        <label class="req">Operation (ICD-9) <span style="font-weight:normal;color:#666">— กรอกช่องนี้ หรือช่องรายละเอียดเพิ่มเติมด้านล่าง อย่างน้อย 1 ช่อง</span></label>
         <div class="ac">
           <input type="text" id="OP_SEARCH" autocomplete="off"
                  placeholder="พิมพ์ชื่อ operation หรือรหัส ICD-9 เช่น chole, 51.23">
@@ -130,7 +130,7 @@
         <div class="sync" id="OPS_STATUS"></div>
       </div>
       <div class="full">
-        <label>รายละเอียดเพิ่มเติม / operation ที่ไม่มีใน ICD-9</label>
+        <label class="req">รายละเอียดเพิ่มเติม / operation ที่ไม่มีใน ICD-9 <span style="font-weight:normal;color:#666">(ถ้าไม่ได้เลือก ICD-9)</span></label>
         <input type="text" id="OP_FREE" placeholder="เช่น c/o adhesiolysis หรือชื่อ operation ที่หาไม่เจอ">
       </div>
       <div class="full">
@@ -146,7 +146,7 @@
     <h2>Wound Classification / Pathology</h2>
     <div class="grid">
       <div>
-        <label>Wound Classification</label>
+        <label class="req">Wound Classification</label>
         <select id="WOUND">
           <option value="">— select —</option>
           <option value="clean">Clean Wound</option>
@@ -596,13 +596,14 @@ function collect(){
 /* ===== ตรวจช่องที่ต้องกรอกก่อนพิมพ์ ===== */
 const REQUIRED = [
   ["PATIENT_NAME","Patient name"],["HN","HN"],["SURGEON","Surgeon"],["DATE","Date of operation"],
-  ["TIME_START","เวลาเริ่ม"],["TIME_END","เวลาสิ้นสุด"],["POST_OP_DX","Post-Operative Diagnosis"]
+  ["TIME_START","เวลาเริ่ม"],["TIME_END","เวลาสิ้นสุด"],["POST_OP_DX","Post-Operative Diagnosis"],["WOUND","Wound Classification"]
 ];
 function validate(d){
   document.querySelectorAll(".invalid").forEach(el=>el.classList.remove("invalid"));
   const missing=[], els=[];
   REQUIRED.forEach(([id,label])=>{ if(!d[id]){ missing.push(label); els.push($(id)); } });
-  if(!d.OPERATION){ missing.push("Operation"); els.push($("OP_SEARCH")); }
+  if(!d.OPS.length && !d.OP_FREE){ missing.push("Operation (ICD-9) หรือ รายละเอียดเพิ่มเติม"); els.push($("OP_SEARCH"),$("OP_FREE")); }
+  els.sort((a,b)=> a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
   els.forEach(el=>el.classList.add("invalid"));
   if(els.length){
     els[0].scrollIntoView({behavior:"smooth",block:"center"});
