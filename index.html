@@ -48,6 +48,10 @@
   #previewPane{position:sticky;top:12px;min-width:0;max-width:100%;}
   #preview{background:#fff;border:1px solid var(--border);border-radius:10px;padding:28px 32px;
     min-height:400px;max-height:calc(100vh - 130px);overflow:auto;font-family:"Sarabun","TH Sarabun New",serif;font-size:14.5px;line-height:1.45;}
+  #measureDoc{position:absolute;left:-10000px;top:0;width:698px;visibility:hidden;pointer-events:none;
+    font-family:"TH SarabunPSK","TH Sarabun New","Sarabun","Angsana New",sans-serif;line-height:1.3}
+  #measureDoc table{border-collapse:collapse;width:100%;table-layout:fixed}
+  #measureDoc td{border:0.75pt solid black;font-size:inherit;overflow-wrap:break-word;word-wrap:break-word}
   .hint{font-size:12.5px;color:var(--muted);margin-top:6px}
   /* preview / doc shared look */
   #preview h1{font-size:20px;text-align:center;margin:0 0 10px}
@@ -647,7 +651,7 @@ function anesTechList(d){
   return tech;
 }
 
-function buildBody(d, FS=13){
+function buildBody(d, FS=13, twoCol=false){
   const tech = anesTechList(d);
   const anesLine = `- under ${tech.length ? esc(tech.join(", ")) : "__________"}`;
 
@@ -705,6 +709,7 @@ function buildBody(d, FS=13){
  </tr>
 </table>
 <div style="border:0.75pt solid black;border-top:none;padding:3pt 6pt;overflow-wrap:break-word;word-wrap:break-word">
+  <div class="opcols"${twoCol ? ' style="column-count:2;column-gap:14pt;column-rule:0.75pt solid #999;column-fill:balance"' : ''}>
     <u>Position</u> : ${dot(d.POSITION)}<br>
     <u>Approach</u> : ${dot(d.APPROACH)}<br>
     <u>Findings</u> :<br>
@@ -719,6 +724,7 @@ function buildBody(d, FS=13){
     <u>EBL</u> : ${esc(d.EBL)} ml<br>
     <u>Complication</u> : ${esc(d.COMPLICATION)}<br>
     <u>Swab count</u> : ${swabTxt}
+  </div>
     <div style="page-break-inside:avoid">
       <p style="text-align:right;margin:6pt 40pt 2pt 0">Surgeon -</p>
       <p style="text-align:right;margin:2pt 40pt 2pt 0">(${dot(d.SURGEON)})</p>
@@ -728,7 +734,7 @@ function buildBody(d, FS=13){
 <p style="margin:4pt 0;font-size:${FT-4}pt">HN: ${esc(d.HN)}&nbsp;&nbsp;&nbsp;AN: ${esc(d.AN)}&nbsp;&nbsp;&nbsp;${esc(d.PATIENT_NAME)}&nbsp;&nbsp;&nbsp;Age: ${esc(d.AGE)}&nbsp;&nbsp;&nbsp;Ward: ${esc(d.WARD)}</p>`;
 }
 
-function buildDocHtml(d, forPrint=false){
+function buildDocHtml(d, forPrint=false, twoCol=false){
   const FS = docFS(d, forPrint);
   return `<html><head><meta charset="utf-8"><title>Operative Note</title>
 <style>
@@ -739,7 +745,7 @@ table,td {border:0.75pt solid black; font-size:${FS}pt;}
 td {overflow-wrap:break-word; word-wrap:break-word;}
 p,div {orphans:2; widows:2;}
 </style></head>
-<body><div class="Section1">${buildBody(d, FS)}</div></body></html>`;
+<body><div class="Section1">${buildBody(d, FS, twoCol)}</div></body></html>`;
 }
 
 /* ===== Google Sheet (Apps Script Web App) ===== */
@@ -924,13 +930,32 @@ async function migrateLocalTemplates(){
   if(ok) toast("⬆ ย้าย template เดิมในเครื่องขึ้น Sheet แล้ว "+ok+" รายการ");
 }
 
+/* ===== 2 column อัตโนมัติ: ถ้า 1 column ต้องย่อเกิน TWO_COL_MIN_SCALE ให้แบ่งเนื้อหาเป็น 2 column ===== */
+const TWO_COL_MIN_SCALE = 0.85;
+const A4_AVAIL_H_PX = (841.9 - 72) * 96/72;   // ความสูงหน้า A4 ลบขอบ 36pt บน-ล่าง
+function needsTwoCol(d){
+  try{
+    let m = document.getElementById("measureDoc");
+    if(!m){
+      m = document.createElement("div");
+      m.id = "measureDoc";
+      m.setAttribute("aria-hidden","true");
+      document.body.appendChild(m);
+    }
+    const FS = docFS(d, true);
+    m.style.fontSize = FS + "pt";
+    m.innerHTML = buildBody(d, FS, false);
+    return m.getBoundingClientRect().height > A4_AVAIL_H_PX / TWO_COL_MIN_SCALE;
+  }catch(e){ return false; }
+}
+
 /* ===== ย่อเนื้อหาอัตโนมัติให้พอดี A4 หน้าเดียวตอนพิมพ์ ===== */
 function fitOnePage(win){
   try{
     const doc = win.document;
     const page = doc.querySelector(".Section1") || doc.body;
     const PX = 96/72;
-    const availH = (841.9 - 72) * PX;
+    const availH = A4_AVAIL_H_PX;
     let scale = 1;
     for(let i=0;i<5;i++){
       const h = page.getBoundingClientRect().height;
@@ -975,14 +1000,15 @@ function printDoc(){
 
   const doc = f.contentWindow.document;
   doc.open();
-  doc.write(buildDocHtml(d, true));
+  doc.write(buildDocHtml(d, true, needsTwoCol(d)));
   doc.close();
   setTimeout(go, 800);
   sendToSheet(d);
 }
 
 function renderPreview(){
-  $("preview").innerHTML = buildBody(collect());
+  const d = collect();
+  $("preview").innerHTML = buildBody(d, 13, needsTwoCol(d));
 }
 
 /* ===== draft autosave (ไม่เก็บลายเซ็น, หมดอายุใน 24 ชม.) ===== */
